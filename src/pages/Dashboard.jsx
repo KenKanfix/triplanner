@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTrips, newTrip } from '../store/TripsContext'
 import { uid as makeId } from '../lib/store'
+import { sortByDate } from '../lib/format'
 
 export default function Dashboard() {
   const { trips, addTrip, deleteTrip } = useTrips()
+  const sortedTrips = sortByDate(trips, 'startDate')
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -89,7 +91,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="card-grid">
-          {trips.map((t) => (
+          {sortedTrips.map((t) => (
             <div key={t.id} className="card trip-card">
               <Link to={`/trip/${t.id}`} className="trip-card-link">
                 <h2>{t.name}</h2>

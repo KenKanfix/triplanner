@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTrips, newCity } from '../store/TripsContext'
 import { uid as makeId } from '../lib/store'
-import { cityDateRange } from '../lib/format'
+import { cityDateRange, sortByDate } from '../lib/format'
 import {
   getFlightApiKey,
   lookupFlightByNumber,
@@ -427,7 +427,7 @@ export default function TripDetail() {
           </div>
         ) : (
           <div className="card-grid">
-            {trip.cities.map((c) => (
+            {sortByDate(trip.cities, 'arrivalDate').map((c) => (
               <div key={c.id} className="card city-card">
                 <Link to={`/trip/${trip.id}/city/${c.id}`} className="city-card-link">
                   <h2>{c.name}</h2>

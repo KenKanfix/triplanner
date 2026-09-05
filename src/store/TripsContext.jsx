@@ -41,6 +41,8 @@ export function newPlace(type = 'attraction') {
     address: '',
     notes: '',
     priority: 'normal',
+    // Optional day/date this place is planned for.
+    date: '',
     // Destination end point, used for walk / scenic route type places.
     destName: '',
     destLat: null,

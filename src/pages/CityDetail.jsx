@@ -7,6 +7,7 @@ import HotelSearch from '../components/HotelSearch'
 import TripMap from '../components/TripMap'
 import { PLACE_TYPES, typeInfo } from '../lib/placeTypes'
 import { resolveOrigin } from '../lib/placeOrigin'
+import { formatDate, sortByDate } from '../lib/format'
 import {
   fetchRoute,
   formatDistance,
@@ -138,6 +139,8 @@ export default function CityDetail() {
     phone: '',
     website: '',
     notes: '',
+    checkIn: '',
+    checkOut: '',
   })
 
   const [editingAirport, setEditingAirport] = useState(false)
@@ -173,6 +176,8 @@ export default function CityDetail() {
         phone: city.hotel.phone || '',
         website: city.hotel.website || '',
         notes: city.hotel.notes || '',
+        checkIn: city.hotel.checkIn || '',
+        checkOut: city.hotel.checkOut || '',
       })
     }
   }, [editingHotel, city])
@@ -268,6 +273,8 @@ export default function CityDetail() {
         phone: hotelFields.phone.trim(),
         website: hotelFields.website.trim(),
         notes: hotelFields.notes.trim(),
+        checkIn: hotelFields.checkIn || '',
+        checkOut: hotelFields.checkOut || '',
       }
       updateCity(tripId, cityId, { hotel: h })
       setEditingHotel(false)
@@ -501,6 +508,28 @@ export default function CityDetail() {
               cityName={city.name}
               onPick={handleHotelPick}
             />
+            <div className="form-row">
+              <label>
+                Check-in
+                <input
+                  type="date"
+                  value={hotelFields.checkIn}
+                  onChange={(e) =>
+                    setHotelFields({ ...hotelFields, checkIn: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Check-out
+                <input
+                  type="date"
+                  value={hotelFields.checkOut}
+                  onChange={(e) =>
+                    setHotelFields({ ...hotelFields, checkOut: e.target.value })
+                  }
+                />
+              </label>
+            </div>
             <label>
               Address
               <input
@@ -558,6 +587,12 @@ export default function CityDetail() {
         ) : hotel ? (
           <div className="card">
             <h3>{hotel.name}</h3>
+            {hotel.checkIn || hotel.checkOut ? (
+              <p className="muted">
+                📅 {formatDate(hotel.checkIn) || '…'} –{' '}
+                {formatDate(hotel.checkOut) || '…'}
+              </p>
+            ) : null}
             {hotel.address && <p>{hotel.address}</p>}
             {hotel.phone && <p className="muted">☎️ {hotel.phone}</p>}
             {hotel.website && (
@@ -872,6 +907,14 @@ export default function CityDetail() {
                 </select>
               </label>
               <label>
+                Date
+                <input
+                  type="date"
+                  value={placeFields.date}
+                  onChange={(e) => setPlaceFields({ ...placeFields, date: e.target.value })}
+                />
+              </label>
+              <label>
                 Coordinates
                 <input
                   readOnly
@@ -914,7 +957,7 @@ export default function CityDetail() {
         )}
 
         <ul className="place-list">
-          {placeList.map((p) => (
+          {sortByDate(placeList, 'date').map((p) => (
             <li key={p.id} className="card place-item">
               <div className="place-item-main">
                 <span className="place-icon">{typeInfo(p.type).icon}</span>
@@ -923,6 +966,7 @@ export default function CityDetail() {
                     {p.name}{' '}
                     {p.priority === 'must' && <span className="tag">Must</span>}
                   </strong>
+                  {p.date && <p className="muted">📅 {formatDate(p.date)}</p>}
                   {p.address && <p className="muted">{p.address}</p>}
                   {p.type === 'walk' && p.destName && (
                     <p className="muted">🏁 → {p.destName}</p>
