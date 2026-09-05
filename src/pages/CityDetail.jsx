@@ -184,11 +184,32 @@ export default function CityDetail() {
 
   const hotel = city?.hotel ?? null
 
-  // Known airports from the trip's flight legs.
+  // Flight legs relevant to this city: those whose arrival or departure date
+  // falls within the city's arrival → departure window. When the city has no
+  // dates, fall back to every trip flight so existing behaviour is kept.
+  const cityFlights = useMemo(() => {
+    const legs = trip?.flights ?? []
+    if (!city?.arrivalDate || !city?.departureDate) return legs
+    const start = new Date(city.arrivalDate).getTime()
+    const end = new Date(city.departureDate).getTime()
+    if (Number.isNaN(start) || Number.isNaN(end)) return legs
+    return legs.filter((leg) => {
+      const hasArrival = leg.arrivalTime && !Number.isNaN(new Date(leg.arrivalTime).getTime())
+      const hasDeparture = leg.departureTime && !Number.isNaN(new Date(leg.departureTime).getTime())
+      const inWindow = (t) => t >= start && t <= end
+      const arr = hasArrival ? new Date(leg.arrivalTime).getTime() : null
+      const dep = hasDeparture ? new Date(leg.departureTime).getTime() : null
+      if (arr != null && inWindow(arr)) return true
+      if (dep != null && inWindow(dep)) return true
+      return false
+    })
+  }, [trip, city])
+
+  // Known airports from the city's relevant flight legs.
   const airportSuggestions = useMemo(() => {
     const seen = {}
     const out = []
-    for (const leg of trip?.flights ?? []) {
+    for (const leg of cityFlights) {
       for (const air of [leg.departureAirport, leg.arrivalAirport]) {
         if (air && !seen[air]) {
           seen[air] = true
@@ -197,12 +218,12 @@ export default function CityDetail() {
       }
     }
     return out
-  }, [trip])
+  }, [cityFlights])
 
-  // Pick the most likely airport for this city from the trip's flight legs.
+  // Pick the most likely airport for this city from its relevant flight legs.
   const pickAirport = useCallback(
     (side) => {
-      const legs = trip?.flights ?? []
+      const legs = cityFlights
       if (legs.length === 0) return ''
       const target =
         side === 'arrival' ? city?.arrivalDate : city?.departureDate
@@ -228,7 +249,7 @@ export default function CityDetail() {
         ? legs[legs.length - 1].arrivalAirport || ''
         : legs[0]?.departureAirport || ''
     },
-    [trip, city],
+    [cityFlights, city],
   )
 
   function openAirportForm() {
@@ -490,6 +511,60 @@ export default function CityDetail() {
           ← {trip.name}
         </Link>
       </div>
+
+      {/* Flights for this city */}
+      <section className="section">
+        <div className="section-head">
+          <h2>✈️ Flights for this city</h2>
+        </div>
+        {cityFlights.length === 0 ? (
+          <div className="empty">
+            <p>No flights match this city's dates. Add flight legs in the trip.</p>
+          </div>
+        ) : (
+          <div className="flight-legs">
+            {cityFlights.map((f, i) => (
+              <div key={i} className="card flight-leg">
+                <div className="flight-leg-head">
+                  <span className="leg-badge">Leg</span>
+                  <strong>
+                    {f.airline ? `${f.airline} ` : ''}
+                    {f.flightNo}
+                  </strong>
+                </div>
+                <div className="flight-route">
+                  <div>
+                    <span className="airport">
+                      {f.departureAirport || '?'}
+                    </span>
+                    <span className="muted">
+                      {f.departureTime
+                        ? formatDate(f.departureTime)
+                        : ''}
+                    </span>
+                  </div>
+                  <span className="arrow">→</span>
+                  <div>
+                    <span className="airport">
+                      {f.arrivalAirport || '?'}
+                    </span>
+                    <span className="muted">
+                      {f.arrivalTime ? formatDate(f.arrivalTime) : ''}
+                    </span>
+                  </div>
+                </div>
+                {f.bookingRef && (
+                  <p className="muted">Booking ref: {f.bookingRef}</p>
+                )}
+                {f.notes && <p className="notes">{f.notes}</p>}
+                <Link to={`/trip/${tripId}`} className="btn btn-sm">
+                  Edit flights
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Hotel */}
       <section className="section">
