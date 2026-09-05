@@ -195,6 +195,23 @@ h3 {
 .city-card h2 {
   color: var(--primary-dark);
 }
+.city-dates {
+  display: flex;
+  gap: 0.5rem;
+}
+.city-dates label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--muted);
+  gap: 0.2rem;
+}
+.city-dates input {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+}
 
 .empty {
   border: 1px dashed var(--border);

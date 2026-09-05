@@ -1,6 +1,8 @@
 import { Link, Outlet } from 'react-router-dom'
 import SettingsButton from './SettingsButton'
 
+const logoUrl = import.meta.env.BASE_URL + 'pwa-192x192.png'
+
 export default function Layout() {
   return (
     <div className="app">
@@ -8,7 +10,7 @@ export default function Layout() {
         <Link className="brand" to="/">
           <img
             className="brand-logo"
-            src="/pwa-192x192.png"
+            src={logoUrl}
             alt="Triplanner icon"
             width={24}
             height={24}

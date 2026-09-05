@@ -30,6 +30,8 @@ export default function TripDetail() {
   const [showCity, setShowCity] = useState(false)
   const [cityName, setCityName] = useState('')
   const [cityCountry, setCityCountry] = useState('')
+  const [cityArrival, setCityArrival] = useState('')
+  const [cityDeparture, setCityDeparture] = useState('')
   const [flightLookup, setFlightLookup] = useState({
     loading: false,
     error: '',
@@ -157,9 +159,13 @@ export default function TripDetail() {
     city.id = makeId()
     city.name = cityName.trim() || 'Untitled city'
     city.country = cityCountry.trim()
+    city.arrivalDate = cityArrival
+    city.departureDate = cityDeparture
     updateTrip(trip.id, { cities: [...trip.cities, city] })
     setCityName('')
     setCityCountry('')
+    setCityArrival('')
+    setCityDeparture('')
     setShowCity(false)
   }
 
@@ -169,6 +175,14 @@ export default function TripDetail() {
         cities: trip.cities.filter((c) => c.id !== cityId),
       })
     }
+  }
+
+  function updateCityDates(cityId, patch) {
+    updateTrip(trip.id, {
+      cities: trip.cities.map((c) =>
+        c.id === cityId ? { ...c, ...patch } : c,
+      ),
+    })
   }
 
   return (
@@ -415,6 +429,24 @@ export default function TripDetail() {
                 />
               </label>
             </div>
+            <div className="form-row">
+              <label>
+                Arrival date
+                <input
+                  type="date"
+                  value={cityArrival}
+                  onChange={(e) => setCityArrival(e.target.value)}
+                />
+              </label>
+              <label>
+                Departure date
+                <input
+                  type="date"
+                  value={cityDeparture}
+                  onChange={(e) => setCityDeparture(e.target.value)}
+                />
+              </label>
+            </div>
             <button className="btn btn-primary" type="submit">
               Add City
             </button>
@@ -438,6 +470,28 @@ export default function TripDetail() {
                     {c.hotel ? '🏨 Hotel set' : 'No hotel'}
                   </p>
                 </Link>
+                <div className="city-dates">
+                  <label>
+                    Arrival
+                    <input
+                      type="date"
+                      value={c.arrivalDate || ''}
+                      onChange={(e) =>
+                        updateCityDates(c.id, { arrivalDate: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Departure
+                    <input
+                      type="date"
+                      value={c.departureDate || ''}
+                      onChange={(e) =>
+                        updateCityDates(c.id, { departureDate: e.target.value })
+                      }
+                    />
+                  </label>
+                </div>
                 <button
                   className="btn btn-danger btn-sm"
                   onClick={() => removeCity(c.id)}
