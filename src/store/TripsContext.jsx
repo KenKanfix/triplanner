@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 import { loadTrips, saveTrips } from '../lib/store'
+import { mergeTrips } from '../lib/tripExport'
 
 export function newTrip() {
   return {
@@ -84,6 +85,11 @@ export function TripsProvider({ children }) {
     setTrips((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
+  // Merge imported trips: same id replaces, unknown ids append.
+  const importTrips = useCallback((imported) => {
+    setTrips((prev) => mergeTrips(prev, imported))
+  }, [])
+
   // City operations within a trip
   const updateCity = useCallback((tripId, cityId, patch) => {
     setTrips((prev) =>
@@ -129,6 +135,7 @@ export function TripsProvider({ children }) {
         addTrip,
         updateTrip,
         deleteTrip,
+        importTrips,
         updateCity,
         updatePlace,
       }}

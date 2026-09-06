@@ -1,17 +1,41 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTrips, newTrip } from '../store/TripsContext'
 import { uid as makeId } from '../lib/store'
 import { sortByDate } from '../lib/format'
+import { downloadTrips, parseImportedTrips } from '../lib/tripExport'
 
 export default function Dashboard() {
-  const { trips, addTrip, deleteTrip } = useTrips()
+  const { trips, addTrip, deleteTrip, importTrips } = useTrips()
   const sortedTrips = sortByDate(trips, 'startDate')
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [importMsg, setImportMsg] = useState(null)
+  const fileRef = useRef(null)
+
+  function handleExport() {
+    downloadTrips(trips)
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const text = await file.text()
+      const imported = parseImportedTrips(text)
+      importTrips(imported)
+      setImportMsg({
+        type: 'ok',
+        text: `Imported ${imported.length} trip(s) from ${file.name}.`,
+      })
+    } catch (err) {
+      setImportMsg({ type: 'error', text: err.message })
+    }
+  }
 
   function handleCreate(e) {
     e.preventDefault()
@@ -35,10 +59,47 @@ export default function Dashboard() {
     <section className="page">
       <div className="page-head">
         <h1>My Trips</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : '+ New Trip'}
-        </button>
+        <div className="btn-group">
+          <button
+            className="btn"
+            onClick={handleExport}
+            disabled={trips.length === 0}
+            title="Download all trips as a JSON backup"
+          >
+            ⬇️ Export
+          </button>
+          <button
+            className="btn"
+            onClick={() => fileRef.current?.click()}
+            title="Restore trips from a JSON backup"
+          >
+            ⬆️ Import
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={handleImportFile}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowForm((v) => !v)}
+          >
+            {showForm ? 'Cancel' : '+ New Trip'}
+          </button>
+        </div>
       </div>
+
+      {importMsg && (
+        <p
+          className={
+            importMsg.type === 'ok' ? 'import-msg' : 'error-text'
+          }
+        >
+          {importMsg.text}
+        </p>
+      )}
 
       {showForm && (
         <form className="card form" onSubmit={handleCreate}>
