@@ -38,7 +38,7 @@ export async function findAirport(input) {
   const code = q.toUpperCase()
   const exact = data.get(code)
   if (exact) {
-    return { iata: code, ...exact }
+    return { iata: code, name: exact.n, city: exact.c, country: exact.y }
   }
   if (q.length > 2) {
     const needle = q.toLowerCase()
@@ -47,7 +47,7 @@ export async function findAirport(input) {
         a.c.toLowerCase().includes(needle) ||
         a.n.toLowerCase().includes(needle)
       ) {
-        return { iata, ...a }
+        return { iata, name: a.n, city: a.c, country: a.y }
       }
     }
   }
