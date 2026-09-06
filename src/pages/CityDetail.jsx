@@ -9,11 +9,12 @@ import { PLACE_TYPES, typeInfo } from '../lib/placeTypes'
 import { resolveOrigin } from '../lib/placeOrigin'
 import { formatDate, sortByDate } from '../lib/format'
 import {
-  fetchRoute,
+  fetchRouteForMode,
   formatDistance,
   formatDuration,
   MODE_LABELS,
   MODE_EMOJI,
+  ROUTE_MODES,
 } from '../lib/routing'
 
 const TRANSPORT_MODES = [
@@ -165,6 +166,10 @@ export default function CityDetail() {
   const [routeLoading, setRouteLoading] = useState(false)
 
   const placeList = city?.places ?? []
+
+  // Transport mode used when routing from each place's origin to the place.
+  const routeMode = city?.routeMode ?? 'auto'
+  const setRouteMode = (value) => updateCity(tripId, cityId, { routeMode: value })
 
   useEffect(() => {
     if (editingHotel && city?.hotel) {
@@ -462,12 +467,16 @@ export default function CityDetail() {
     for (const p of targets) {
       const from = resolveOrigin(p, hotel, placeList)
       if (!from) continue
-      const route = await fetchRoute({ lat: from.lat, lng: from.lng }, { lat: p.lat, lng: p.lng })
+      const route = await fetchRouteForMode(
+        { lat: from.lat, lng: from.lng },
+        { lat: p.lat, lng: p.lng },
+        routeMode,
+      )
       next[p.id] = { ...route, fromName: from.name }
     }
     setRoutes(next)
     setRouteLoading(false)
-  }, [hotel, placeList, editingPlaceId])
+  }, [hotel, placeList, editingPlaceId, routeMode])
 
   useEffect(() => {
     computeAllRoutes()
@@ -1052,6 +1061,9 @@ export default function CityDetail() {
                       {formatDistance(routes[p.id].distanceMeters)} ·{' '}
                       {formatDuration(routes[p.id].durationSeconds)} ·{' '}
                       {MODE_EMOJI[routes[p.id].mode]} {MODE_LABELS[routes[p.id].mode]}
+                      {routes[p.id].approx && (
+                        <span className="muted"> (estimate)</span>
+                      )}
                     </p>
                   )}
                   {!routes[p.id] && p.lat != null && hotel?.lat != null && (
@@ -1077,6 +1089,19 @@ export default function CityDetail() {
       <section className="section">
         <div className="section-head">
           <h2>🗺️ Route planning</h2>
+          <select
+            className="route-mode-select"
+            value={routeMode}
+            onChange={(e) => setRouteMode(e.target.value)}
+            title="Transport mode"
+            aria-label="Transport mode"
+          >
+            {ROUTE_MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.emoji} {m.label}
+              </option>
+            ))}
+          </select>
           {routeLoading && <span className="muted">Routing…</span>}
           <button className="btn btn-sm" onClick={computeAllRoutes}>
             Recalculate routes
@@ -1107,6 +1132,7 @@ export default function CityDetail() {
                     </span>
                     <span className={`route-mode route-${r.mode}`}>
                       {MODE_EMOJI[r.mode]} {MODE_LABELS[r.mode]}
+                      {r.approx && ' (est.)'}
                     </span>
                   </li>
                 ))}

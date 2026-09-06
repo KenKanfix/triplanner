@@ -30,6 +30,43 @@ export async function fetchRoute(from, to, profile = 'driving') {
   }
 }
 
+// OSRM has no public-transit profile, so transit estimates reuse the road
+// geometry but assume a realistic city-transit speed (~18 km/h incl. wait).
+const TRANSIT_KMH = 18
+
+export const ROUTE_MODES = [
+  { value: 'auto', label: 'Auto (recommended)', emoji: '🧠' },
+  { value: 'walk', label: 'Walk', emoji: '🚶' },
+  { value: 'taxi', label: 'Taxi / share ride', emoji: '🚕' },
+  { value: 'public', label: 'Public transport', emoji: '🚌' },
+]
+
+// Fetch a route honouring the user's chosen transport mode. 'auto' keeps the
+// distance-based recommendation. Walking and taxi map to OSRM's walking and
+// driving profiles; public transport is an estimate (see TRANSIT_KMH) marked
+// with `approx: true`.
+export async function fetchRouteForMode(from, to, routeMode = 'auto') {
+  if (routeMode === 'public') {
+    const route = await fetchRoute(from, to, 'driving')
+    if (!route) return null
+    return {
+      ...route,
+      mode: 'public',
+      approx: true,
+      durationSeconds: Math.round((route.distanceMeters / 1000 / TRANSIT_KMH) * 3600),
+    }
+  }
+  if (routeMode === 'taxi') {
+    const route = await fetchRoute(from, to, 'driving')
+    return route ? { ...route, mode: 'taxi' } : null
+  }
+  if (routeMode === 'walk') {
+    const route = await fetchRoute(from, to, 'walking')
+    return route ? { ...route, mode: 'walk' } : null
+  }
+  return fetchRoute(from, to)
+}
+
 export function formatDistance(meters) {
   if (meters < 1000) return `${Math.round(meters)} m`
   return `${(meters / 1000).toFixed(1)} km`
