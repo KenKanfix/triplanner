@@ -229,6 +229,46 @@ h3 {
   margin: 0;
 }
 
+.itinerary {
+  display: flex;
+  flex-direction: column;
+}
+.itinerary-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.75rem;
+  padding-bottom: 1.2rem;
+}
+.itinerary-item::before {
+  content: '';
+  position: absolute;
+  left: 0.95rem;
+  top: 2.1rem;
+  bottom: -0.2rem;
+  width: 2px;
+  background: var(--border);
+}
+.itinerary-item:last-child::before {
+  display: none;
+}
+.itinerary-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  align-self: start;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  font-size: 0.95rem;
+}
+.itinerary-item .card {
+  margin: 0;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.9rem;

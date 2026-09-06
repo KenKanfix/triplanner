@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTrips, newCity } from '../store/TripsContext'
 import { uid as makeId } from '../lib/store'
-import { cityDateRange, sortByDate } from '../lib/format'
+import { cityDateRange } from '../lib/format'
+import { buildItinerary } from '../lib/itinerary'
 import {
   getFlightApiKey,
   lookupFlightByNumber,
@@ -36,6 +37,7 @@ export default function TripDetail() {
   const trip = trips.find((t) => t.id === tripId)
 
   const flights = trip?.flights ?? []
+  const itinerary = buildItinerary(trip?.flights ?? [], trip?.cities ?? [])
   const [editingIndex, setEditingIndex] = useState(null) // null | number
   const [draft, setDraft] = useState(EMPTY_FLIGHT)
   const [showCity, setShowCity] = useState(false)
@@ -239,13 +241,25 @@ export default function TripDetail() {
       </div>
       {trip.notes && <p className="notes">{trip.notes}</p>}
 
-      {/* Flight legs */}
+      {/* Itinerary: flights between cities */}
       <section className="section">
         <div className="section-head">
-          <h2>✈️ Flights</h2>
+          <h2>🗺️ Itinerary</h2>
           <div className="btn-group">
-            <button className="btn btn-sm" onClick={startAddFlight}>
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                startAddFlight()
+                setShowCity(false)
+              }}
+            >
               + Add leg
+            </button>
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowCity((v) => !v)}
+            >
+              {showCity ? 'Cancel' : '+ Add city'}
             </button>
           </div>
         </div>
@@ -387,87 +401,6 @@ export default function TripDetail() {
           </form>
         )}
 
-        {flights.length === 0 ? (
-          editingIndex === null && (
-            <div className="empty">
-              <p>
-                No flights yet. Add legs for each flight — including stopovers
-                or a domestic → international connection.
-              </p>
-            </div>
-          )
-        ) : (
-          <div className="flight-legs">
-            {flights.map((f, i) => (
-              <div key={i} className="card flight-leg">
-                <div className="flight-leg-head">
-                  <span className="leg-badge">Leg {i + 1}</span>
-                  <strong>
-                    {f.airline ? `${f.airline} ` : ''}
-                    {f.flightNo}
-                  </strong>
-                </div>
-                <div className="flight-route">
-                  <div>
-                    <span className="airport">
-                      {f.departureAirport || '?'}
-                    </span>
-                    <LegAirportCity code={f.departureAirport} />
-                    <span className="muted">{f.departureTime || ''}</span>
-                  </div>
-                  <span className="arrow">→</span>
-                  <div>
-                    <span className="airport">{f.arrivalAirport || '?'}</span>
-                    <LegAirportCity code={f.arrivalAirport} />
-                    <span className="muted">{f.arrivalTime || ''}</span>
-                  </div>
-                </div>
-                {f.bookingRef && (
-                  <p className="muted">Booking ref: {f.bookingRef}</p>
-                )}
-                {f.notes && <p className="notes">{f.notes}</p>}
-                <div className="flight-leg-actions">
-                  <button className="btn btn-sm" onClick={() => startEditFlight(i)}>
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    disabled={i === 0}
-                    onClick={() => moveFlight(i, -1)}
-                    title="Move earlier in itinerary"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    disabled={i === flights.length - 1}
-                    onClick={() => moveFlight(i, 1)}
-                    title="Move later in itinerary"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => removeFlight(i)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Cities */}
-      <section className="section">
-        <div className="section-head">
-          <h2>🏙️ Cities</h2>
-          <button className="btn btn-sm" onClick={() => setShowCity((v) => !v)}>
-            {showCity ? 'Cancel' : '+ Add city'}
-          </button>
-        </div>
-
         {showCity && (
           <form className="card form" onSubmit={addCity}>
             <div className="form-row">
@@ -513,53 +446,138 @@ export default function TripDetail() {
           </form>
         )}
 
-        {trip.cities.length === 0 ? (
+        {itinerary.length === 0 ? (
           <div className="empty">
-            <p>No cities yet. Add a city to start planning hotels, transport and places.</p>
+            <p>
+              No itinerary yet. Add a flight leg and a city to start planning.
+            </p>
           </div>
         ) : (
-          <div className="card-grid">
-            {sortByDate(trip.cities, 'arrivalDate').map((c) => (
-              <div key={c.id} className="card city-card">
-                <Link to={`/trip/${trip.id}/city/${c.id}`} className="city-card-link">
-                  <h2>{c.name}</h2>
-                  {c.country && <p className="muted">{c.country}</p>}
-                  <p className="muted">{cityDateRange(c)}</p>
-                  <p className="muted">
-                    {c.places.length} places ·{' '}
-                    {c.hotel ? '🏨 Hotel set' : 'No hotel'}
-                  </p>
-                </Link>
-                <div className="city-dates">
-                  <label>
-                    Arrival
-                    <input
-                      type="date"
-                      value={c.arrivalDate || ''}
-                      onChange={(e) =>
-                        updateCityDates(c.id, { arrivalDate: e.target.value })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Departure
-                    <input
-                      type="date"
-                      value={c.departureDate || ''}
-                      onChange={(e) =>
-                        updateCityDates(c.id, { departureDate: e.target.value })
-                      }
-                    />
-                  </label>
-                </div>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => removeCity(c.id)}
+          <div className="itinerary">
+            {itinerary.map((item) =>
+              item.kind === 'flight' ? (
+                <div
+                  key={item.key}
+                  className="itinerary-item itinerary-flight"
                 >
-                  Delete
-                </button>
-              </div>
-            ))}
+                  <div className="itinerary-dot">✈️</div>
+                  <div className="card flight-leg">
+                    <div className="flight-leg-head">
+                      <span className="leg-badge">Leg {item.idx + 1}</span>
+                      <strong>
+                        {item.flight.airline ? `${item.flight.airline} ` : ''}
+                        {item.flight.flightNo}
+                      </strong>
+                    </div>
+                    <div className="flight-route">
+                      <div>
+                        <span className="airport">
+                          {item.flight.departureAirport || '?'}
+                        </span>
+                        <LegAirportCity code={item.flight.departureAirport} />
+                        <span className="muted">{item.flight.departureTime || ''}</span>
+                      </div>
+                      <span className="arrow">→</span>
+                      <div>
+                        <span className="airport">
+                          {item.flight.arrivalAirport || '?'}
+                        </span>
+                        <LegAirportCity code={item.flight.arrivalAirport} />
+                        <span className="muted">{item.flight.arrivalTime || ''}</span>
+                      </div>
+                    </div>
+                    {item.flight.bookingRef && (
+                      <p className="muted">Booking ref: {item.flight.bookingRef}</p>
+                    )}
+                    {item.flight.notes && (
+                      <p className="notes">{item.flight.notes}</p>
+                    )}
+                    <div className="flight-leg-actions">
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => startEditFlight(item.idx)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        disabled={item.idx === 0}
+                        onClick={() => moveFlight(item.idx, -1)}
+                        title="Move earlier in itinerary"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="btn btn-sm"
+                        disabled={item.idx === flights.length - 1}
+                        onClick={() => moveFlight(item.idx, 1)}
+                        title="Move later in itinerary"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => removeFlight(item.idx)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div key={item.key} className="itinerary-item itinerary-city">
+                  <div className="itinerary-dot">🏙️</div>
+                  <div className="card city-card">
+                    <Link
+                      to={`/trip/${trip.id}/city/${item.city.id}`}
+                      className="city-card-link"
+                    >
+                      <h2>{item.city.name}</h2>
+                      {item.city.country && (
+                        <p className="muted">{item.city.country}</p>
+                      )}
+                      <p className="muted">{cityDateRange(item.city)}</p>
+                      <p className="muted">
+                        {item.city.places.length} places ·{' '}
+                        {item.city.hotel ? '🏨 Hotel set' : 'No hotel'}
+                      </p>
+                    </Link>
+                    <div className="city-dates">
+                      <label>
+                        Arrival
+                        <input
+                          type="date"
+                          value={item.city.arrivalDate || ''}
+                          onChange={(e) =>
+                            updateCityDates(item.city.id, {
+                              arrivalDate: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Departure
+                        <input
+                          type="date"
+                          value={item.city.departureDate || ''}
+                          onChange={(e) =>
+                            updateCityDates(item.city.id, {
+                              departureDate: e.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => removeCity(item.city.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ),
+            )}
           </div>
         )}
       </section>
