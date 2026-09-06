@@ -8,6 +8,11 @@ import {
   lookupFlightByNumber,
   normalizeFlightIata,
 } from '../lib/flights'
+import {
+  airportCityLabel,
+  findAirport,
+  useAirport,
+} from '../lib/airports'
 
 const EMPTY_FLIGHT = {
   airline: '',
@@ -17,6 +22,12 @@ const EMPTY_FLIGHT = {
   departureTime: '',
   arrivalTime: '',
   bookingRef: '',
+}
+
+function LegAirportCity({ code }) {
+  const airport = useAirport(code)
+  if (!airport) return null
+  return <span className="muted airport-city">→ {airportCityLabel(airport)}</span>
 }
 
 export default function TripDetail() {
@@ -32,11 +43,14 @@ export default function TripDetail() {
   const [cityCountry, setCityCountry] = useState('')
   const [cityArrival, setCityArrival] = useState('')
   const [cityDeparture, setCityDeparture] = useState('')
+  const [autoAddCity, setAutoAddCity] = useState(true)
   const [flightLookup, setFlightLookup] = useState({
     loading: false,
     error: '',
     info: null,
   })
+  const fromAirport = useAirport(draft.departureAirport)
+  const toAirport = useAirport(draft.arrivalAirport)
 
   if (!trip || !trip.cities) {
     return (
@@ -75,6 +89,32 @@ export default function TripDetail() {
         : flights.map((f, i) => (i === editingIndex ? leg : f))
     updateTrip(trip.id, { flights: next })
     setEditingIndex(null)
+    if (autoAddCity) {
+      addArrivalCity(leg.arrivalAirport, leg.arrivalTime)
+    }
+  }
+
+  // Resolve an airport reference to its city and add a City to the trip if
+  // one with that name isn't already there.
+  async function addArrivalCity(airportRef, arrivalTime) {
+    let airport
+    try {
+      airport = await findAirport(airportRef)
+    } catch {
+      return
+    }
+    if (!airport) return
+    const name = airport.city || airport.name
+    const exists = trip.cities.some(
+      (c) => c.name.trim().toLowerCase() === name.trim().toLowerCase(),
+    )
+    if (exists) return
+    const city = newCity()
+    city.id = makeId()
+    city.name = name
+    city.country = airport.country
+    city.arrivalDate = arrivalTime ? arrivalTime.slice(0, 10) : ''
+    updateTrip(trip.id, { cities: [...trip.cities, city] })
   }
 
   function removeFlight(i) {
@@ -265,6 +305,9 @@ export default function TripDetail() {
                   }
                   placeholder="e.g. LHR"
                 />
+                <span className="airport-city">
+                  {airportCityLabel(fromAirport)}
+                </span>
               </label>
               <label>
                 To (airport)
@@ -275,8 +318,23 @@ export default function TripDetail() {
                   }
                   placeholder="e.g. NRT"
                 />
+                <span className="airport-city">
+                  {airportCityLabel(toAirport)}
+                </span>
               </label>
             </div>
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={autoAddCity}
+                onChange={(e) => setAutoAddCity(e.target.checked)}
+              />
+              <span>
+                {toAirport && !autoAddCity
+                  ? 'Unchecked — arrival city won\u2019t be added to Cities'
+                  : 'Automatically add arrival city to 🏙️ Cities when saved'}
+              </span>
+            </label>
             <div className="form-row">
               <label>
                 Departs
@@ -354,11 +412,13 @@ export default function TripDetail() {
                     <span className="airport">
                       {f.departureAirport || '?'}
                     </span>
+                    <LegAirportCity code={f.departureAirport} />
                     <span className="muted">{f.departureTime || ''}</span>
                   </div>
                   <span className="arrow">→</span>
                   <div>
                     <span className="airport">{f.arrivalAirport || '?'}</span>
+                    <LegAirportCity code={f.arrivalAirport} />
                     <span className="muted">{f.arrivalTime || ''}</span>
                   </div>
                 </div>
